@@ -7,6 +7,10 @@ from sklearn.preprocessing import LabelEncoder, StandardScaler
 from sklearn.discriminant_analysis import LinearDiscriminantAnalysis as LDA
 from sklearn.pipeline import Pipeline
 from sklearn.metrics import classification_report, confusion_matrix
+from xgboost import XGBClassifier
+from sklearn.ensemble import RandomForestClassifier
+from sklearn.svm import SVC
+import joblib
 
 # Importing the dataset 
 dataset = pd.read_csv('Sonar_data.csv', header=None)
@@ -25,17 +29,45 @@ y_test = en.transform(y_test)
 pipeline = Pipeline([
     ('scaler', StandardScaler()),
     ('lda', LDA(n_components=1)),
-    ('logreg', LogisticRegression(random_state=0))
+    ('classifier', LogisticRegression(random_state=0))
 ])
 
 # Parameters grid to tune Logistic Regression hyperparameters
-params = {
-    'logreg__C': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9, 1],
-    'logreg__solver': ['liblinear', 'lbfgs'],
-    'logreg__penalty': ['l1','l2','elasticnet'],
-    'logreg__dual': [True , False],
-
-}
+params = [
+    {
+        'classifier': [LogisticRegression()],
+        'classifier__C': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9 , 1],
+        'classifier__solver': [ 'lbfgs'],
+        'classifier__penalty': [ 'l2'],
+        'classifier__dual': [False]  
+    },
+    {
+        'classifier': [LogisticRegression()],
+        'classifier__C': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9 , 1],
+        'classifier__solver': ['liblinear'],
+        'classifier__penalty': ['l1', 'l2'],
+        'classifier__dual': [True]  
+    },
+    {
+        'classifier': [SVC()],
+        'classifier__C': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9 , 1],
+        'classifier__kernel': ['linear']
+    },
+    {
+        'classifier': [SVC()],
+        'classifier__C': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9 , 1],
+        'classifier__kernel': ['rbf'],
+        'classifier__gamma': [0.1, 0.2, 0.3, 0.4, 0.5, 0.6, 0.7, 0.8, 0.9]
+    },
+    {
+        'classifier': [XGBClassifier(use_label_encoder=False, eval_metric='logloss')]
+    },
+    {
+        'classifier': [RandomForestClassifier()],
+        'classifier__n_estimators': [50, 100],
+        'classifier__max_depth': [None, 10, 20]
+    }
+]
 
 # GridSearchCV with 5-fold CV to find best hyperparameters
 grid = GridSearchCV(pipeline, param_grid=params, cv=10, scoring='accuracy', n_jobs=-1)
@@ -43,12 +75,18 @@ grid = GridSearchCV(pipeline, param_grid=params, cv=10, scoring='accuracy', n_jo
 # Training with GridSearchCV
 grid.fit(X_train, y_train)
 
-# Best parameters and best cross-validation accuracy
-print("Best parameters found:", grid.best_params_)
-print(f"Best cross-validation accuracy: {grid.best_score_ * 100:.2f} %")
+print("Best model :", grid.best_estimator_)
+print("Best hyperparameters :", grid.best_params_)
+print("Best precision :", grid.best_score_) 
+
+#Saving the best model
+joblib.dump(grid.best_estimator_, "best_model.pkl")
+
 
 # Predicting on test set using the best model
-y_pred = grid.predict(X_test)
+best_model = joblib.load("best_model.pkl")
+y_pred = best_model.predict(X_test)
+
 
 # Evaluation metrics on test set
 print("\nClassification Report:")

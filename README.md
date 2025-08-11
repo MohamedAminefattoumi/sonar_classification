@@ -1,12 +1,13 @@
 ### Sonar Mines vs Rocks Classification – scikit-learn
 
-This project trains and evaluates a classifier to distinguish “Mine” (M) vs “Rock” (R) objects from Sonar measurements. The learning pipeline is StandardScaler → LDA → Logistic Regression, with hyperparameter search via cross-validation (GridSearchCV).
+This project trains and evaluates a machine learning pipeline to distinguish “Mine” (M) vs “Rock” (R) objects from Sonar measurements. The pipeline uses StandardScaler → LDA → a tunable classifier. Models explored via GridSearchCV include Logistic Regression, SVM (linear and RBF), RandomForest, and XGBoost.
 
 ### Repository contents
 
 - `Sonar_data.csv`: dataset (60 feature columns + 1 target column M/R)
 - `sonar_dataset_overview.py`: quick data overview (shape, stats, class distribution, per-class means)
-- `main.py`: training with a pipeline and GridSearchCV, then classification report and confusion matrix
+- `main.py`: training with a pipeline and GridSearchCV, model selection, and evaluation
+- `best_model.pkl`: serialized best pipeline saved after training
 
 ### Requirements
 
@@ -15,6 +16,8 @@ This project trains and evaluates a classifier to distinguish “Mine” (M) vs 
   - `pandas`
   - `numpy`
   - `scikit-learn`
+  - `xgboost`
+  - `joblib`
 
 Quick setup in a virtual environment (Windows PowerShell):
 
@@ -22,7 +25,7 @@ Quick setup in a virtual environment (Windows PowerShell):
 py -m venv .venv
 .\.venv\Scripts\Activate.ps1
 pip install --upgrade pip
-pip install pandas numpy scikit-learn
+pip install pandas numpy scikit-learn xgboost joblib
 ```
 
 ### Usage
@@ -43,16 +46,18 @@ python main.py
 
 Outputs:
 
+- Best model (full pipeline)
 - Best hyperparameters found by GridSearchCV
 - Best mean cross-validation accuracy
 - Classification report on the test set
 - Confusion matrix
+- Saves the best pipeline to `best_model.pkl`
 
 ### Model notes
 
-- Pipeline: `StandardScaler` → `LDA(n_components=1)` → `LogisticRegression`.
+- Pipeline: `StandardScaler` → `LDA(n_components=1)` → `classifier` (one of LogisticRegression, SVC linear/RBF, RandomForest, XGBoost)
 - Train/test split: 80%/20% (`random_state=0`).
-- Hyperparameter search: `GridSearchCV(cv=10, scoring='accuracy', n_jobs=-1)`. Depending on your scikit‑learn version, some `solver`/`penalty`/`dual` combinations are unsupported. If you see errors like “combination is not supported”, restrict the grid (e.g., remove `elasticnet` or use `solver='saga'` only when using `elasticnet`, and consider specifying `l1_ratio`).
+- Hyperparameter search: `GridSearchCV(cv=10, scoring='accuracy', n_jobs=-1)` over multiple model families via the `classifier` step.
 
 ### Dataset structure
 
@@ -61,9 +66,9 @@ Outputs:
 
 ### Possible improvements
 
-- Explore compatible solver/penalty combos (e.g., `saga` for `elasticnet`)
-- Try other models (SVM, RandomForest, Gradient Boosting)
-- Stratified cross-validation and Bayesian optimization for hyperparameters
+- Calibrate probabilities (Platt scaling/Isotonic) for SVM and XGBoost
+- Add feature importance and permutation importance analyses
+- Stratified cross-validation and Bayesian or randomized hyperparameter search
 - ROC/PR curves and additional metrics (AUC, per-class F1)
 
 ### Credits
